@@ -5,8 +5,8 @@ from . import views
 urlpatterns = [
     # Ruta para obtener token de autenticación
     path('token/', obtain_auth_token, name='api_token_auth'),
-    
-    # Si tienes vistas personalizadas para registro, puedes añadirlas aquí
-    # path('register/', views.RegisterView.as_view(), name='register'),
+    path('login/', views.LoginView.as_view(), name='login'),
+    # Añade la ruta de registro:
+    path('register/', views.RegisterView.as_view(), name='register'),
     # path('profile/', views.UserProfileView.as_view(), name='profile'),
 ]

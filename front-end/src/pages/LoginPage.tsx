@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useFormik } from 'formik';
+import { Formik, Form, Field, ErrorMessage, FormikHelpers, useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import '../styles/AuthStyles.css';
 import { auth } from '../services/api';
+import { register } from '../api';
 import PersonIcon from '@mui/icons-material/Person';
 import PasswordIcon from '@mui/icons-material/Password';
 import EmailIcon from '@mui/icons-material/Email';
@@ -18,16 +19,14 @@ const LoginPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [registerError, setRegisterError] = useState('');
-  
-  // Estados para controlar la visibilidad de las contraseñas
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  // Estados para notificaciones toast
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('error');
+  const [apiErrors, setApiErrors] = useState<Record<string, string[]>>({});
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   const togglePanel = () => setIsSignUp(!isSignUp);
 
@@ -41,7 +40,6 @@ const LoginPage = () => {
       password: Yup.string().required('La contraseña es requerida')
     }),
     onSubmit: async (values, { setErrors, setSubmitting }) => {
-      // Verificar si hay campos vacíos
       if (!values.email || !values.password) {
         setToastMessage('Por favor complete todos los campos requeridos');
         setToastType('error');
@@ -53,17 +51,12 @@ const LoginPage = () => {
         setLoginError('');
         const response = await auth.login(values.email, values.password);
         if (response.success && response.data) {
-          console.log('Datos recibidos para autenticación:', response.data);
-          
           if (!response.data.token) {
-            console.error('La respuesta no contiene un token:', response.data);
             setLoginError('Formato de respuesta inválido: falta el token');
             return;
           }
           
           const loginSuccess = await authLogin(response.data);
-          
-          console.log('Resultado del login en contexto:', loginSuccess);
           
           if (loginSuccess) {
             navigate('/profile', { replace: true });
@@ -73,8 +66,6 @@ const LoginPage = () => {
             setShowToast(true);
           }
         } else {
-          console.error('Respuesta de error desde el servidor:', response.error);
-          
           if (response.error && typeof response.error === 'object') {
             const errorFields = response.error;
             
@@ -105,7 +96,6 @@ const LoginPage = () => {
           }
         }
       } catch (error: any) {
-        console.error('Error en login:', error);
         setToastMessage('Error al iniciar sesión: ' + (error.message || 'Error inesperado'));
         setToastType('error');
         setShowToast(true);
@@ -115,65 +105,82 @@ const LoginPage = () => {
     }
   });
 
-  const registerFormik = useFormik({
-    initialValues: {
-      username: '',
-      email: '',
-      firstName: '',
-      lastName: '',
-      password: '',
-      confirmPassword: ''
-    },
-    validationSchema: Yup.object({
-      username: Yup.string().required('Requerido'),
-      email: Yup.string().email('Correo inválido').required('Requerido'),
-      firstName: Yup.string().required('Requerido'),
-      lastName: Yup.string().required('Requerido'),
-      password: Yup.string().min(8, 'Mínimo 8 caracteres').required('Requerido'),
-      confirmPassword: Yup.string()
-        .oneOf([Yup.ref('password')], 'Las contraseñas deben coincidir')
-        .required('Requerido')
-    }),
-    onSubmit: async (values) => {
-      // Verificar si hay campos vacíos
-      const requiredFields = ['username', 'email', 'firstName', 'lastName', 'password', 'confirmPassword'];
-      const emptyFields = requiredFields.filter(field => !values[field as keyof typeof values]);
-      
-      if (emptyFields.length > 0) {
-        setToastMessage('Por favor complete todos los campos requeridos');
-        setToastType('error');
-        setShowToast(true);
-        return;
-      }
+  const initialRegisterValues = {
+    username: '',
+    email: '',
+    password: '',
+    password2: '',
+    first_name: '',
+    last_name: ''
+  };
 
-      try {
-        setRegisterError('');
-        // Implementar la lógica de registro aquí
-        const response = await auth.register(
-          values.username, 
-          values.email, 
-          values.password,
-          values.firstName,
-          values.lastName
-        );
-        if (response && response.success) {
-          setToastMessage('¡Registro exitoso! Por favor inicie sesión.');
-          setToastType('success');
-          setShowToast(true);
-          togglePanel(); // Cambia a panel de login después de registro exitoso
-        } else {
-          setToastMessage('Error al registrar usuario.');
-          setToastType('error');
-          setShowToast(true);
-        }
-      } catch (error: any) {
-        console.error('Error en registro:', error);
-        setToastMessage('Error al registrar: ' + (error.message || 'Error inesperado'));
-        setToastType('error');
-        setShowToast(true);
-      }
-    }
+  const registerValidationSchema = Yup.object({
+    username: Yup.string()
+      .min(3, 'El nombre de usuario debe tener al menos 3 caracteres')
+      .required('El nombre de usuario es obligatorio'),
+    email: Yup.string()
+      .email('Correo electrónico inválido')
+      .required('El correo electrónico es obligatorio')
+      .matches(/@pregrado.uoh\.cl$/, 'Debe ser un correo institucional (@pregrado.uoh.cl)'),
+    password: Yup.string()
+      .min(8, 'La contraseña debe tener al menos 8 caracteres')
+      .required('La contraseña es obligatoria'),
+    password2: Yup.string()
+      .oneOf([Yup.ref('password')], 'Las contraseñas deben coincidir')
+      .required('Debes confirmar la contraseña'),
+    first_name: Yup.string().required('El nombre es obligatorio'),
+    last_name: Yup.string().required('El apellido es obligatorio')
   });
+
+  const onRegisterSubmit = async (
+    values: typeof initialRegisterValues,
+    { setSubmitting, setErrors }: FormikHelpers<typeof initialRegisterValues>
+  ) => {
+    setApiErrors({});
+    console.log('[Registro] Enviando datos:', values);
+    try {
+      const response = await register(values);
+      console.log('[Registro] Respuesta de la API:', response);
+      if (response && response.success) {
+        setRegistrationSuccess(true);
+        setTimeout(() => {
+          setRegistrationSuccess(false);
+          setIsSignUp(false);
+        }, 2000);
+      } else {
+        console.log('[Registro] Respuesta inesperada:', response);
+      }
+    } catch (error: any) {
+      console.error('[Registro] Error en catch:', error);
+      if (error.response && error.response.data) {
+        const errData = error.response.data;
+        console.log('[Registro] Errores de la API:', errData);
+        const formattedErrors: Record<string, string[]> = {};
+        Object.keys(errData).forEach(key => {
+          if (Array.isArray(errData[key])) {
+            formattedErrors[key] = errData[key];
+          } else if (typeof errData[key] === 'string') {
+            formattedErrors[key] = [errData[key]];
+          } else {
+            formattedErrors[key] = ['Entrada inválida'];
+          }
+        });
+        setApiErrors(formattedErrors);
+        const formikErrors: { [key: string]: string } = {};
+        Object.keys(errData).forEach(key => {
+          if (key in values) {
+            formikErrors[key] = Array.isArray(errData[key]) 
+              ? errData[key][0] 
+              : String(errData[key]);
+          }
+        });
+        setErrors(formikErrors);
+      }
+    } finally {
+      setSubmitting(false);
+      console.log('[Registro] setSubmitting(false)');
+    }
+  };
 
   const handleCloseToast = () => {
     setShowToast(false);
@@ -187,118 +194,108 @@ const LoginPage = () => {
         show={showToast}
         onClose={handleCloseToast}
       />
-      
       <div className={`container ${isSignUp ? 'right-panel-active' : ''}`} id="container">
         <div className="form-container sign-up-container">
-          <form onSubmit={registerFormik.handleSubmit}>
-            <h1>Crear Cuenta</h1>
-            {registerError && <p className="error">{registerError}</p>}
-            
-            <div className="register-columns">
-              {/* Columna izquierda */}
-              <div className="register-column">
-                <div className="input-container">
-                  <PersonIcon className="input-icon" />
-                  <input
-                    type="text"
-                    placeholder="Nombre de usuario"
-                    name="username"
-                    value={registerFormik.values.username}
-                    onChange={registerFormik.handleChange}
-                  />
-                </div>
-                {registerFormik.errors.username && registerFormik.touched.username && (
-                  <div className="error-text">{registerFormik.errors.username}</div>
+          <Formik
+            initialValues={initialRegisterValues}
+            validationSchema={registerValidationSchema}
+            onSubmit={onRegisterSubmit}
+          >
+            {({ isSubmitting }) => (
+              <Form>
+                <h1>Crear Cuenta</h1>
+                {registrationSuccess && (
+                  <div className="alert alert-success">
+                    ¡Registro exitoso! Por favor revisa tu correo para verificar tu cuenta.
+                  </div>
                 )}
-                
-                <div className="input-container">
-                  <PersonIcon className="input-icon" />
-                  <input
-                    type="text"
-                    placeholder="Nombre"
-                    name="firstName"
-                    value={registerFormik.values.firstName}
-                    onChange={registerFormik.handleChange}
-                  />
-                </div>
-                {registerFormik.errors.firstName && registerFormik.touched.firstName && (
-                  <div className="error-text">{registerFormik.errors.firstName}</div>
+                {Object.keys(apiErrors).map((key) =>
+                  apiErrors[key].map((error, i) => (
+                    <div key={`${key}-${i}`} className="error-text">
+                      {key === 'non_field_errors' ? error : `${key}: ${error}`}
+                    </div>
+                  ))
                 )}
-                
-                <div className="input-container">
-                  <PasswordIcon className="input-icon" />
-                  <input
-                    type={showRegisterPassword ? "text" : "password"}
-                    placeholder="Contraseña"
-                    name="password"
-                    value={registerFormik.values.password}
-                    onChange={registerFormik.handleChange}
-                  />
-                  <div className="password-toggle" onClick={() => setShowRegisterPassword(!showRegisterPassword)}>
-                    {showRegisterPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                <div className="register-columns">
+                  <div className="register-column">
+                    <div className="input-container">
+                      <PersonIcon className="input-icon" />
+                      <Field
+                        type="text"
+                        name="username"
+                        placeholder="Nombre de usuario"
+                        className="form-control"
+                      />
+                    </div>
+                    <ErrorMessage name="username" component="div" className="error-text" />
+
+                    <div className="input-container">
+                      <PersonIcon className="input-icon" />
+                      <Field
+                        type="text"
+                        name="first_name"
+                        placeholder="Nombre"
+                        className="form-control"
+                      />
+                    </div>
+                    <ErrorMessage name="first_name" component="div" className="error-text" />
+
+                    <div className="input-container">
+                      <PasswordIcon className="input-icon" />
+                      <Field
+                        type="password"
+                        name="password"
+                        placeholder="Contraseña"
+                        className="form-control"
+                      />
+                    </div>
+                    <ErrorMessage name="password" component="div" className="error-text" />
+                  </div>
+                  <div className="register-column">
+                    <div className="input-container">
+                      <EmailIcon className="input-icon" />
+                      <Field
+                        type="email"
+                        name="email"
+                        placeholder="Correo electrónico"
+                        className="form-control"
+                      />
+                    </div>
+                    <ErrorMessage name="email" component="div" className="error-text" />
+
+                    <div className="input-container">
+                      <PersonIcon className="input-icon" />
+                      <Field
+                        type="text"
+                        name="last_name"
+                        placeholder="Apellido"
+                        className="form-control"
+                      />
+                    </div>
+                    <ErrorMessage name="last_name" component="div" className="error-text" />
+
+                    <div className="input-container">
+                      <PasswordIcon className="input-icon" />
+                      <Field
+                        type="password"
+                        name="password2"
+                        placeholder="Confirmar contraseña"
+                        className="form-control"
+                      />
+                    </div>
+                    <ErrorMessage name="password2" component="div" className="error-text" />
                   </div>
                 </div>
-                {registerFormik.errors.password && registerFormik.touched.password && (
-                  <div className="error-text">{registerFormik.errors.password}</div>
-                )}
-              </div>
-              
-              {/* Columna derecha */}
-              <div className="register-column">
-                <div className="input-container">
-                  <EmailIcon className="input-icon" />
-                  <input
-                    type="email"
-                    placeholder="Correo electrónico"
-                    name="email"
-                    value={registerFormik.values.email}
-                    onChange={registerFormik.handleChange}
-                  />
-                </div>
-                {registerFormik.errors.email && registerFormik.touched.email && (
-                  <div className="error-text">{registerFormik.errors.email}</div>
-                )}
-                
-                <div className="input-container">
-                  <PersonIcon className="input-icon" />
-                  <input
-                    type="text"
-                    placeholder="Apellido"
-                    name="lastName"
-                    value={registerFormik.values.lastName}
-                    onChange={registerFormik.handleChange}
-                  />
-                </div>
-                {registerFormik.errors.lastName && registerFormik.touched.lastName && (
-                  <div className="error-text">{registerFormik.errors.lastName}</div>
-                )}
-                
-                <div className="input-container">
-                  <PasswordIcon className="input-icon" />
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirmar contraseña"
-                    name="confirmPassword"
-                    value={registerFormik.values.confirmPassword}
-                    onChange={registerFormik.handleChange}
-                  />
-                  <div className="password-toggle" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-                    {showConfirmPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                  </div>
-                </div>
-                {registerFormik.errors.confirmPassword && registerFormik.touched.confirmPassword && (
-                  <div className="error-text">{registerFormik.errors.confirmPassword}</div>
-                )}
-              </div>
-            </div>
-            
-            <button type="submit" className="register-button">Registrarse</button>
-          </form>
+                <button type="submit" className="register-button" disabled={isSubmitting}>
+                  {isSubmitting ? 'Registrando...' : 'Registrarse'}
+                </button>
+              </Form>
+            )}
+          </Formik>
         </div>
         <div className="form-container sign-in-container">
           <form onSubmit={formik.handleSubmit}>
             <h1>Iniciar Sesión</h1>
-            
             <div className="input-container">
               <EmailIcon className="input-icon" />
               <input
@@ -312,7 +309,6 @@ const LoginPage = () => {
             {formik.errors.email && formik.touched.email && (
               <div className="error-text">{formik.errors.email}</div>
             )}
-            
             <div className="input-container">
               <PasswordIcon className="input-icon" />
               <input
@@ -329,7 +325,6 @@ const LoginPage = () => {
             {formik.errors.password && formik.touched.password && (
               <div className="error-text">{formik.errors.password}</div>
             )}
-            
             <button type="submit">Iniciar Sesión</button>
           </form>
         </div>
