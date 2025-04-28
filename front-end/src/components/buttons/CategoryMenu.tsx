@@ -231,7 +231,11 @@ const CategoryMenu = () => {
             boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
             mt: 1,
             overflow: 'hidden',
-            bgcolor: 'white', // Cambiado a blanco
+            bgcolor: 'white',
+            border: 'none' // Asegurarse de que no haya bordes
+          },
+          '& .MuiPopover-paper': {
+            borderTop: 'none' // Específicamente quitar el borde superior
           }
         }}
       >

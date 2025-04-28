@@ -223,15 +223,16 @@ const Header = () => {
     <AppBar position="fixed" sx={{ 
       bgcolor: '#004f9e', 
       zIndex: 1100,
-      boxShadow: 3
+      boxShadow: 3,
+      height: { xs: '64px', md: '72px' }, // Incremento de altura para pantallas grandes
     }}>
       <Toolbar sx={{ 
         display: 'flex', 
         flexWrap: { xs: 'nowrap', sm: 'wrap' },
-        alignItems: 'center',
+        alignItems: 'center', // Centrado vertical
         justifyContent: 'space-between',
-        padding: { xs: '8px 10px', sm: '8px 16px', md: '8px 24px' },
-        minHeight: { xs: '56px', sm: '64px' },
+        padding: { xs: '0 10px', sm: '0 16px', md: '0 24px' }, // Eliminamos padding vertical para mejor control
+        minHeight: { xs: '56px', sm: '64px', md: '72px' }, // Ajustado para coincidir con la altura del AppBar
         width: '100%',
         boxSizing: 'border-box'
       }}>
@@ -239,16 +240,30 @@ const Header = () => {
         <Box sx={{ 
           display: 'flex',
           alignItems: 'center',
-          minWidth: { xs: 'auto', sm: '150px' },
-          width: { xs: 'auto', sm: '180px' },
-          mr: { xs: 0.5, sm: 1 }
+          minWidth: { xs: 'auto', sm: '150px', md: '180px' },
+          width: { xs: 'auto', sm: '180px', md: '200px' },
+          mr: { xs: 0.5, sm: 1, md: 2 },
+          height: '100%', // Ocupar toda la altura
         }}>
           <Link to="/" style={{ 
             display: 'flex', 
             alignItems: 'center', 
-            textDecoration: 'none' 
+            textDecoration: 'none',
+            height: '100%' // Ocupar toda la altura
           }}>
-            <img src={logoImage} alt="Logo UOH Market" className="site-logo" />
+            <img 
+              src={logoImage} 
+              alt="Logo UOH Market" 
+              className="site-logo" 
+              style={{ 
+                width: 'auto', 
+                height: 'auto', 
+                maxHeight: '32px',
+                '@media (minWidth: 960px)': {
+                  maxHeight: '40px' // Logo más grande en pantallas medianas/grandes
+                }
+              }} 
+            />
             
             {/* Solo mostrar texto en pantallas >= sm */}
             <Typography
@@ -259,11 +274,11 @@ const Header = () => {
               sx={{ 
                 display: { xs: 'none', sm: 'block' }, 
                 flexShrink: 0,
-                fontSize: { sm: '1.25rem' },
+                fontSize: { sm: '1.25rem', md: '1.5rem' }, // Texto más grande en pantallas grandes
                 color: 'white',
                 fontFamily: '"Inter", sans-serif',
                 fontWeight: 800,
-                ml: 1
+                ml: { sm: 1, md: 1.5 }
               }}
             >
               UOH Market
@@ -279,12 +294,21 @@ const Header = () => {
           justifyContent: 'center', 
           width: { xs: '100%', sm: 'auto' },
           maxWidth: { xs: 'calc(100% - 150px)', sm: '500px', md: '1200px' },
+          height: '50%', // Asegurar que ocupe toda la altura
         }}>
           {/* Menú hamburguesa siempre a la izquierda */}
           <Box sx={{ 
             display: 'flex',
             alignItems: 'center',
-            mr: { xs: 0.5, sm: 1 }
+            mr: { xs: 0.5, sm: 1, md: 2 },
+            height: '100%', // Ocupar toda la altura
+            '& .MuiButtonBase-root': { // Aumentar tamaño del botón de menú
+              fontSize: { md: '1.2rem' },
+              padding: { md: '10px' }
+            },
+            '& .MuiSvgIcon-root': { // Aumentar tamaño del icono de menú
+              fontSize: { md: '28px' }
+            }
           }}>
             <CategoryMenu />
           </Box>
@@ -293,10 +317,35 @@ const Header = () => {
           <Box sx={{ 
             flexGrow: 1,
             width: '100%',
+            display: 'flex',
+            alignItems: 'center', // Centrar verticalmente
+            height: '100%', // Ocupar toda la altura
+            '& .MuiInputBase-root': { // Aumentar tamaño del input de búsqueda
+              fontSize: { md: '1.1rem' },
+              height: { xs: '38px', md: '44px' }, // Altura específica para centrado uniforme
+              my: 'auto', // Margen vertical automático para centrar
+            },
+            '& .MuiInputBase-input': { // Asegurar que el texto de búsqueda tenga buen tamaño
+              padding: { md: '10px 14px' }
+            },
+            '& .MuiButtonBase-root': { // Aumentar tamaño del botón de búsqueda
+              padding: { md: '8px' },
+              height: { xs: '38px', md: '44px' }, // Altura específica para centrado uniforme
+              my: 'auto', // Margen vertical automático para centrar
+            },
+            '& .MuiSvgIcon-root': { // Aumentar tamaño del icono de búsqueda
+              fontSize: { md: '26px' }
+            },
+            // Envuelve el SearchInput en un div para centrar perfectamente
+            '& > div': {
+              display: 'flex',
+              alignItems: 'center',
+              height: '100%'
+            }
           }}>
             <SearchInput
               placeholder={window.innerWidth < 400 ? "Buscar..." : "Buscar productos..."}
-              onSearch={handleSearch}
+              onSearch={() => handleSearch(searchQuery)}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -308,9 +357,10 @@ const Header = () => {
           display: { xs: 'none', sm: 'flex' },
           alignItems: 'center',
           justifyContent: 'flex-end',
-          minWidth: { sm: '150px' },
-          width: { sm: '180px' },
-          gap: 0.5,
+          minWidth: { sm: '150px', md: '180px' },
+          width: { sm: '180px', md: '200px' },
+          gap: { sm: 0.5, md: 1 },
+          height: '100%', // Ocupar toda la altura
         }}>
           {isAuthenticated ? (
             <>
@@ -320,28 +370,24 @@ const Header = () => {
               color="inherit" 
               onClick={() => navigate('/login')}
               size="small"
+              sx={{
+                fontSize: { md: '1rem' },
+                padding: { md: '1px 1px' }
+              }}
             >
               Iniciar Sesión
             </Button>
           )}
-          <IconButton
-            size="medium"
-            edge="end"
-            aria-label="account of current user"
-            aria-controls={menuId}
-            aria-haspopup="true"
-            onClick={handleProfileMenuOpen}
-            color="inherit"
-          >
-            <AccountCircle />
-          </IconButton>
+ 
         </Box>
         
         {/* Menú para móvil */}
         <Box sx={{ 
           display: { xs: 'flex', sm: 'none' },
           ml: 0.5,
-          flexShrink: 0
+          flexShrink: 0,
+          alignItems: 'center',
+          height: '100%', // Ocupar toda la altura
         }}>
           <IconButton
             size="small"

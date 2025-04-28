@@ -125,16 +125,18 @@ const LoginPage = () => {
       confirmPassword: ''
     },
     validationSchema: Yup.object({
-      username: Yup.string().required('Requerido'),
-      email: Yup.string().email('Correo inválido').required('Requerido'),
-      firstName: Yup.string().required('Requerido'),
-      lastName: Yup.string().required('Requerido'),
-      password: Yup.string().min(8, 'Mínimo 8 caracteres').required('Requerido'),
+      username: Yup.string().required('Nombre de usuario es requerido'),
+      email: Yup.string().email('Correo inválido').required('Correo es requerido'),
+      firstName: Yup.string().required('Nombre es requerido'),
+      lastName: Yup.string().required('Apellido es requerido'),
+      password: Yup.string()
+        .min(8, 'La contraseña debe tener al menos 8 caracteres')
+        .required('Contraseña es requerida'),
       confirmPassword: Yup.string()
         .oneOf([Yup.ref('password')], 'Las contraseñas deben coincidir')
-        .required('Requerido')
+        .required('Confirmación de contraseña es requerida')
     }),
-    onSubmit: async (values) => {
+    onSubmit: async (values, { setErrors, setSubmitting, resetForm }) => {
       // Verificar si hay campos vacíos
       const requiredFields = ['username', 'email', 'firstName', 'lastName', 'password', 'confirmPassword'];
       const emptyFields = requiredFields.filter(field => !values[field as keyof typeof values]);
@@ -148,29 +150,85 @@ const LoginPage = () => {
 
       try {
         setRegisterError('');
-        // Implementar la lógica de registro aquí
         const response = await auth.register(
-          values.username, 
-          values.email, 
+          values.username,
+          values.email,
           values.password,
           values.firstName,
           values.lastName
         );
-        if (response && response.success) {
-          setToastMessage('¡Registro exitoso! Por favor inicie sesión.');
+
+        if (response.success && response.data) {
+          console.log('Registro exitoso:', response.data);
+          setToastMessage('¡Registro exitoso! Por favor inicie sesión con sus credenciales.');
           setToastType('success');
           setShowToast(true);
+          resetForm();
           togglePanel(); // Cambia a panel de login después de registro exitoso
         } else {
-          setToastMessage('Error al registrar usuario.');
-          setToastType('error');
-          setShowToast(true);
+          console.error('Error en registro:', response.error);
+          
+          // Manejar errores específicos de campo
+          if (response.error && typeof response.error === 'object') {
+            const errorFields = response.error;
+            const formikErrors: Record<string, string> = {};
+            
+            // Mapear errores del backend a los campos de formik
+            if (errorFields.username) {
+              formikErrors.username = Array.isArray(errorFields.username) 
+                ? errorFields.username[0] 
+                : errorFields.username;
+            }
+            
+            if (errorFields.email) {
+              formikErrors.email = Array.isArray(errorFields.email) 
+                ? errorFields.email[0] 
+                : errorFields.email;
+            }
+            
+            if (errorFields.password) {
+              formikErrors.password = Array.isArray(errorFields.password) 
+                ? errorFields.password[0] 
+                : errorFields.password;
+            }
+            
+            if (errorFields.first_name) {
+              formikErrors.firstName = Array.isArray(errorFields.first_name) 
+                ? errorFields.first_name[0] 
+                : errorFields.first_name;
+            }
+            
+            if (errorFields.last_name) {
+              formikErrors.lastName = Array.isArray(errorFields.last_name) 
+                ? errorFields.last_name[0] 
+                : errorFields.last_name;
+            }
+            
+            if (Object.keys(formikErrors).length > 0) {
+              setErrors(formikErrors);
+            } else {
+              // Error general en caso de que no haya errores específicos de campo
+              setRegisterError('Error en el registro. Por favor intente nuevamente.');
+              setToastMessage('Error en el registro. Por favor intente nuevamente.');
+              setToastType('error');
+              setShowToast(true);
+            }
+          } else {
+            // Error genérico
+            setRegisterError(response.error || 'Error en el registro');
+            setToastMessage(response.error || 'Error en el registro. Por favor intente nuevamente.');
+            setToastType('error');
+            setShowToast(true);
+          }
         }
       } catch (error: any) {
         console.error('Error en registro:', error);
+        setRegisterError('Error al registrar usuario');
         setToastMessage('Error al registrar: ' + (error.message || 'Error inesperado'));
         setToastType('error');
         setShowToast(true);
+      } finally {
+        setSubmitting(false);
       }
     }
   });

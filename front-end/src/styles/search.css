@@ -1,16 +1,3 @@
-
-#root {
-	max-width: none !important;
-	margin: 0 !important;
-	padding: 0 !important;
-	text-align: initial !important;
-	height: 100vh !important;
-	width: 100% !important;
-	display: flex !important;
-	justify-content: center !important;
-	align-items: center !important;
-}
-
 .group {
     display: flex;
     line-height: 28px;
@@ -95,6 +82,12 @@
   fill: #9e9ea7;
   width: 0.9rem; /* Icono más pequeño */
   height: 0.9rem;
+}
+
+/* Estilos para evitar bordes inesperados en diálogos */
+.MuiDialogContent-root.MuiDialogContent-dividers {
+  border-top: none !important;
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 /* Responsive adjustments */

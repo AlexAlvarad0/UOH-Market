@@ -22,14 +22,15 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         sx={{
           height,
           width: '100%',
-          backgroundColor: '#f0f0f0',
+          backgroundColor: '#111111 !important', // Forzar color con !important
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           borderRadius: 1,
+          color: '#fff',
         }}
       >
-        <span>No hay imágenes disponibles</span>
+        <span style={{ color: '#fff' }}>No hay imágenes disponibles</span>
       </Box>
     );
   }
@@ -49,33 +50,50 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   };
 
   return (
-    <Box sx={{ width: '100%', position: 'relative' }}>
-      {/* Imagen principal */}
+    <Box sx={{ width: '100%', position: 'relative', color: '#fff' }}>
+      {/* Imagen principal - Contenedor externo con fondo forzado */}
       <Box
+        className="image-carousel-container"
         sx={{
           height,
           width: '100%',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
           borderRadius: 1,
           position: 'relative',
-          backgroundColor: '#f5f5f5',
+          backgroundColor: '#111111 !important', // Forzar color con !important
+          padding: '20px', // Reducir el padding
         }}
+        style={{ backgroundColor: '#111111' }} // Método alternativo para aplicar el fondo
       >
-        <img
-          src={images[currentIndex].image}
-          alt={`Imagen ${currentIndex + 1}`}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain', // contain para ver la imagen completa
+        {/* Contenedor de imagen */}
+        <Box
+          sx={{
+            width: '90%',
+            height: '90%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'relative',
+            zIndex: 1, // Asegurar que esté por encima del fondo
           }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400?text=Imagen+no+disponible';
-          }}
-        />
+        >
+          <img
+            src={images[currentIndex].image}
+            alt={`Imagen ${currentIndex + 1}`}
+            style={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              objectFit: 'contain',
+            }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400?text=Imagen+no+disponible';
+            }}
+          />
+        </Box>
         
         {/* Botones de navegación */}
         {images.length > 1 && (
@@ -84,23 +102,31 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               onClick={handlePrev}
               sx={{
                 position: 'absolute',
-                left: 8,
-                backgroundColor: 'rgba(255,255,255,0.5)',
-                '&:hover': { backgroundColor: 'rgba(255,255,255,0.8)' },
+                left: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                backgroundColor: 'rgba(0,79,158,0.9)', // Más opaco para mejor visibilidad
+                color: '#fff',
+                '&:hover': { backgroundColor: 'rgba(0,79,158,1)' },
+                zIndex: 10,
               }}
             >
-              <ArrowBackIosNewIcon />
+              <ArrowBackIosNewIcon sx={{ color: '#fff' }} />
             </IconButton>
             <IconButton
               onClick={handleNext}
               sx={{
                 position: 'absolute',
-                right: 8,
-                backgroundColor: 'rgba(255,255,255,0.5)',
-                '&:hover': { backgroundColor: 'rgba(255,255,255,0.8)' },
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                backgroundColor: 'rgba(0,79,158,0.9)', // Más opaco para mejor visibilidad
+                color: '#fff',
+                '&:hover': { backgroundColor: 'rgba(0,79,158,1)' },
+                zIndex: 10,
               }}
             >
-              <ArrowForwardIosIcon />
+              <ArrowForwardIosIcon sx={{ color: '#fff' }} />
             </IconButton>
           </>
         )}
@@ -127,12 +153,14 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
                 width: 80,
                 height: 80,
                 cursor: 'pointer',
-                border: currentIndex === index ? '2px solid #1976d2' : '1px solid #ddd',
+                border: currentIndex === index ? '2px solid #004f9e' : '1px solid #ddd', // Azul activo
                 overflow: 'hidden',
                 flexShrink: 0,
                 transition: 'all 0.2s',
+                backgroundColor: '#222', // Fondo oscuro para contraste
                 '&:hover': {
                   transform: 'scale(1.05)',
+                  border: '2px solid #004f9e',
                 },
               }}
             >

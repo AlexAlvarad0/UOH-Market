@@ -8,6 +8,7 @@ INSTALLED_APPS = [
     'authentication',  # Your new authentication app
     'accounts',
     'products',
+    'chat',
     # ...other apps...
 ]
 

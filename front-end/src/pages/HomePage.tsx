@@ -3,24 +3,97 @@ import { useLocation } from 'react-router-dom';
 import { 
   Container, Typography, Box, CircularProgress, Alert, 
   Pagination, FormControl, InputLabel, Select, MenuItem,
-  Grid, Slider, Paper, Chip
+  Grid, Dialog, DialogTitle, DialogContent,
+  DialogActions, Button as MuiButton, 
 } from '@mui/material';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { useAuth } from '../hooks/useAuth';
 import ProductList from '../components/ProductList';
+import OffersCarousel from '../components/OffersCarousel';
 import api from '../services/api';
+// Para implementar Slider de shadcn/ui
+import * as SliderPrimitive from '@radix-ui/react-slider';
+import { styled } from '@mui/material/styles';
+
+// Slider de shadcn/ui adaptado para Material UI
+const SliderRoot = styled(SliderPrimitive.Root)(({ theme }) => ({
+  position: 'relative',
+  display: 'flex',
+  alignItems: 'center',
+  userSelect: 'none',
+  touchAction: 'none',
+  width: '100%',
+  height: 20,
+}));
+
+const SliderTrack = styled(SliderPrimitive.Track)(({ theme }) => ({
+  backgroundColor: theme.palette.mode === 'light' ? theme.palette.grey[200] : theme.palette.grey[800],
+  position: 'relative',
+  flexGrow: 1,
+  borderRadius: '9999px',
+  height: 4,
+}));
+
+const SliderRange = styled(SliderPrimitive.Range)(({ theme }) => ({
+  position: 'absolute',
+  backgroundColor: '#004f9e',
+  borderRadius: '9999px',
+  height: '100%',
+}));
+
+const SliderThumb = styled(SliderPrimitive.Thumb)(({ theme }) => ({
+  display: 'block',
+  width: 16,
+  height: 16,
+  backgroundColor: 'white',
+  boxShadow: `0 2px 4px ${theme.palette.mode === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.3)'}`,
+  borderRadius: '9999px',
+  border: `2px solid #004f9e`,
+  transition: 'background-color 120ms, box-shadow 120ms',
+  '&:focus': {
+    outline: 'none',
+    boxShadow: `0 0 0 4px rgba(0, 79, 158, 0.2)`,
+  },
+}));
+
+const ShadcnSlider = ({ value, onChange, min, max, step, onValueCommit }) => (
+  <SliderRoot
+    value={value}
+    onValueChange={onChange}
+    onValueCommit={onValueCommit}
+    min={min}
+    max={max}
+    step={step}
+  >
+    <SliderTrack>
+      <SliderRange />
+    </SliderTrack>
+    <SliderThumb />
+    <SliderThumb />
+  </SliderRoot>
+);
 
 const HomePage = () => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const [page, setPage] = useState(1);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [filters, setFilters] = useState({
     search: new URLSearchParams(location.search).get('search') || '',
-    category: new URLSearchParams(location.search).get('category') || '', // Inicializar category desde URL
+    category: new URLSearchParams(location.search).get('category') || '',
     min_price: 0,
     max_price: 1000000,
     condition: '',
     ordering: '-created_at'
   });
+  const [tempFilters, setTempFilters] = useState({
+    category: '',
+    condition: '',
+    ordering: '-created_at',
+    min_price: 0,
+    max_price: 1000000
+  });
+  const [tempPriceRange, setTempPriceRange] = useState([0, 1000000]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -28,7 +101,6 @@ const HomePage = () => {
   const [categories, setCategories] = useState<Array<{id: number, name: string}>>([]);
   const [priceRange, setPriceRange] = useState([0, 1000000]);
 
-  // Cuando cambie la URL, actualizar los filtros (search y category)
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const searchParam = searchParams.get('search');
@@ -55,34 +127,31 @@ const HomePage = () => {
     
     if (filtersChanged) {
       setFilters(updatedFilters);
-      setPage(1); // Resetear a la primera página cuando cambian los filtros
+      setPage(1);
     }
   }, [location.search]);
 
-  // Fetch categories
   useEffect(() => {
     const getCategories = async () => {
       try {
         const response = await api.getCategories();
-        // Ensure categories is always an array
         if (Array.isArray(response.data)) {
           setCategories(response.data);
         } else if (response.data && Array.isArray(response.data.results)) {
           setCategories(response.data.results);
         } else {
           console.error("Categories data is not an array:", response.data);
-          setCategories([]); // Set to empty array to avoid mapping issues
+          setCategories([]);
         }
       } catch (err) {
         console.error("Error fetching categories:", err);
-        setCategories([]); // Set to empty array on error
+        setCategories([]);
       }
     };
 
     getCategories();
   }, []);
 
-  // Fetch products
   useEffect(() => {
     const getProducts = async () => {
       try {
@@ -103,12 +172,11 @@ const HomePage = () => {
         console.log('Products response:', response);
         
         if (response.success && response.data) {
-          // Handle both paginated and non-paginated responses
           const productData = response.data.results || response.data;
           const totalCount = response.data.count || productData.length;
           
           setProducts(Array.isArray(productData) ? productData : []);
-          setTotalPages(Math.ceil(totalCount / 12)); // Assuming 12 items per page
+          setTotalPages(Math.ceil(totalCount / 12));
         } else {
           setError("No se pudieron cargar los productos.");
           setProducts([]);
@@ -137,7 +205,7 @@ const HomePage = () => {
     setPage(1);
   };
 
-  const handlePriceRangeChange = (event, newValue) => {
+  const handlePriceRangeChange = (newValue) => {
     setPriceRange(newValue);
   };
 
@@ -152,12 +220,10 @@ const HomePage = () => {
 
   const handleFavoriteClick = async (productId) => {
     if (!isAuthenticated) {
-      // Redirect to login page
       return;
     }
     
     try {
-      // Check if product is already in favorites
       const productIndex = products.findIndex(p => p.id === productId);
       const isFavorite = products[productIndex]?.is_favorite;
       
@@ -167,7 +233,6 @@ const HomePage = () => {
         await api.addToFavorites(productId);
       }
       
-      // Update local state to reflect changes
       setProducts(prevProducts => 
         prevProducts.map(product => 
           product.id === productId 
@@ -180,161 +245,337 @@ const HomePage = () => {
     }
   };
 
+  const handleOpenFilterDialog = () => {
+    setTempFilters({
+      category: filters.category,
+      condition: filters.condition,
+      ordering: filters.ordering,
+      min_price: filters.min_price,
+      max_price: filters.max_price
+    });
+    setTempPriceRange([filters.min_price, filters.max_price]);
+    setFilterDialogOpen(true);
+  };
+
+  const handleCloseFilterDialog = () => {
+    setFilterDialogOpen(false);
+  };
+
+  const handleTempFilterChange = (name, value) => {
+    setTempFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleTempPriceRangeChange = (newValue) => {
+    setTempPriceRange(newValue);
+  };
+
+  const applyFiltersAndClose = () => {
+    setFilters({
+      ...filters,
+      ...tempFilters,
+      min_price: tempPriceRange[0],
+      max_price: tempPriceRange[1]
+    });
+    setPage(1);
+    setFilterDialogOpen(false);
+  };
+
   return (
     <Container 
       maxWidth="xl" 
       sx={{ 
-        py: 2,
-        px: { xs: 1, sm: 2 }, 
-        width: '100%', 
-        boxSizing: 'border-box'
+        py: { xs: 2, sm: 3 },
+        px: { xs: 1, sm: 2, md: 3 },
+        mt: { xs: 2, sm: 4 }, // margen superior responsivo en lugar de fijo 215px
       }}
     >
+      <Box sx={{ 
+        width: '100%',
+        mt: 0,
+        mb: 4
+      }}>
+        <OffersCarousel />
+      </Box>
+
       <Typography 
         variant="h4" 
         component="h1" 
         gutterBottom
-        sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}
+        sx={{ 
+          mt: 4, 
+          mb: 4, 
+          fontWeight: 600 
+        }}
       >
         Productos disponibles
       </Typography>
 
-      {/* Filtros - Forma rectangular */}
-      <Paper 
-        sx={{ 
-          mb: 3, 
-          p: { xs: 1.5, sm: 2 }, 
-          borderRadius: 2,
-          width: '100%',
-          maxWidth: '100%',
+      <Box sx={{ 
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        flexDirection: 'row',
+        my: 1,
+        mb: 3,
+        flexWrap: 'nowrap',
+        overflow: 'hidden'
+      }}>
+        <MuiButton 
+          startIcon={<FilterAltIcon />} 
+          variant="contained"
+          onClick={handleOpenFilterDialog}
+          sx={{ 
+            mr: 1,
+            bgcolor: '#004f9e',
+            '&:hover': {
+              bgcolor: '#003b7a'
+            },
+            minWidth: { xs: 'auto', md: '120px' },
+            flexShrink: 0
+          }}
+        >
+          Filtros
+        </MuiButton>
+      </Box>
+
+      <Dialog 
+        open={filterDialogOpen} 
+        onClose={handleCloseFilterDialog}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            overflow: 'hidden'
+          }
         }}
-        elevation={2}
       >
-        <Grid container spacing={1.5} alignItems="center">
-          <Grid item xs={12} sm={6} md={4}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Categoría</InputLabel>
-              <Select
-                value={filters.category}
-                label="Categoría"
-                onChange={(e) => handleFilterChange('category', e.target.value)}
-              >
-                <MenuItem value="">Todas</MenuItem>
-                {Array.isArray(categories) ? (
-                  categories.map((cat) => (
-                    <MenuItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem value="">Error cargando categorías</MenuItem>
-                )}
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Condición</InputLabel>
-              <Select
-                value={filters.condition}
-                label="Condición"
-                onChange={(e) => handleFilterChange('condition', e.target.value)}
-              >
-                <MenuItem value="">Todas</MenuItem>
-                <MenuItem value="new">Nuevo</MenuItem>
-                <MenuItem value="like_new">Como nuevo</MenuItem>
-                <MenuItem value="good">Buen estado</MenuItem>
-                <MenuItem value="fair">Estado aceptable</MenuItem>
-                <MenuItem value="poor">Deteriorado</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Ordenar por</InputLabel>
-              <Select
-                value={filters.ordering}
-                label="Ordenar por"
-                onChange={(e) => handleFilterChange('ordering', e.target.value)}
-              >
-                <MenuItem value="-created_at">Más recientes</MenuItem>
-                <MenuItem value="price">Precio: menor a mayor</MenuItem>
-                <MenuItem value="-price">Precio: mayor a menor</MenuItem>
-                <MenuItem value="-views_count">Más vistos</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Typography gutterBottom>Rango de precios</Typography>
-            <Box sx={{ px: 1 }}>
-              <Slider
-                value={priceRange}
-                onChange={handlePriceRangeChange}
-                onChangeCommitted={applyPriceFilter}
-                valueLabelDisplay="auto"
-                min={0}
-                max={1000000}
-                valueLabelFormat={(value) => `$${value.toLocaleString()}`}
-              />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                <Typography variant="body2">${priceRange[0].toLocaleString()}</Typography>
-                <Typography variant="body2">${priceRange[1].toLocaleString()}</Typography>
-              </Box>
-            </Box>
-          </Grid>
-
-          {Object.keys(filters).some(key => filters[key] !== '' && key !== 'ordering') && (
+        <DialogTitle 
+          sx={{ 
+            bgcolor: '#004f9e', 
+            color: 'white',
+            fontWeight: 'bold',
+            py: 1
+          }}
+        >
+          Filtros
+        </DialogTitle>
+        <DialogContent 
+          dividers={false} 
+          sx={{ 
+            p: 2,
+            borderTop: 'none', // Eliminar borde superior
+            '& .MuiDialogContent-dividers': {
+              borderTop: 'none', // También eliminarlo en el pseudo-elemento
+              borderBottom: '1px solid rgba(0, 0, 0, 0.12)'
+            }
+          }}
+        >
+          <Grid container spacing={2}>
             <Grid item xs={12}>
-              <Box sx={{ 
-                display: 'flex', 
-                flexWrap: 'wrap', 
-                gap: 0.75,
-                mt: 1
-              }}>
-                {filters.category && (
-                  <Chip 
-                    label={`Categoría: ${categories.find(c => c.id === filters.category)?.name || ''}`}
-                    onDelete={() => handleFilterChange('category', '')}
-                  />
-                )}
-                {filters.condition && (
-                  <Chip 
-                    label={`Condición: ${
-                      {
-                        'new': 'Nuevo',
-                        'like_new': 'Como nuevo',
-                        'good': 'Buen estado',
-                        'fair': 'Estado aceptable',
-                        'poor': 'Deteriorado'
-                      }[filters.condition] || filters.condition
-                    }`}
-                    onDelete={() => handleFilterChange('condition', '')}
-                  />
-                )}
-                {filters.min_price > 0 || filters.max_price < 1000000 ? (
-                  <Chip 
-                    label={`Precio: $${filters.min_price.toLocaleString()} - $${filters.max_price.toLocaleString()}`}
-                    onDelete={() => {
-                      setPriceRange([0, 1000000]);
-                      handleFilterChange('min_price', 0);
-                      handleFilterChange('max_price', 1000000);
-                    }}
-                  />
-                ) : null}
-                {filters.search && (
-                  <Chip 
-                    label={`Búsqueda: ${filters.search}`}
-                    onDelete={() => handleFilterChange('search', '')}
-                  />
-                )}
+              <FormControl 
+                fullWidth 
+                size="small"
+                sx={{ 
+                  mb: 1.5,
+                  '& .MuiOutlinedInput-root': {
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#004f9e',
+                    },
+                  },
+                  '& .MuiInputLabel-root.Mui-focused': {
+                    color: '#004f9e',
+                  }
+                }}
+              >
+                <InputLabel>Categoría</InputLabel>
+                <Select
+                  value={tempFilters.category}
+                  label="Categoría"
+                  onChange={(e) => handleTempFilterChange('category', e.target.value)}
+                  MenuProps={{ 
+                    PaperProps: { 
+                      sx: { 
+                        maxHeight: 300,
+                        width: 'auto',
+                      } 
+                    },
+                    anchorOrigin: {
+                      vertical: 'bottom',
+                      horizontal: 'left',
+                    },
+                    transformOrigin: {
+                      vertical: 'top',
+                      horizontal: 'left',
+                    },
+                    getContentAnchorEl: null,
+                  }}
+                  sx={{
+                    '& .MuiSelect-select': {
+                      width: '100%',
+                    }
+                  }}
+                >
+                  <MenuItem value="">Todas</MenuItem>
+                  {Array.isArray(categories) ? (
+                    categories.map((cat) => (
+                      <MenuItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem value="">Error cargando categorías</MenuItem>
+                  )}
+                </Select>
+              </FormControl>
+            
+              <FormControl 
+                fullWidth 
+                size="small"
+                sx={{ 
+                  mb: 1.5,
+                  '& .MuiOutlinedInput-root': {
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#004f9e',
+                    },
+                  },
+                  '& .MuiInputLabel-root.Mui-focused': {
+                    color: '#004f9e',
+                  }
+                }}
+              >
+                <InputLabel>Condición</InputLabel>
+                <Select
+                  value={tempFilters.condition}
+                  label="Condición"
+                  onChange={(e) => handleTempFilterChange('condition', e.target.value)}
+                  MenuProps={{ 
+                    PaperProps: { 
+                      sx: { 
+                        maxHeight: 300,
+                        width: 'auto'
+                      } 
+                    },
+                    anchorOrigin: {
+                      vertical: 'bottom',
+                      horizontal: 'left',
+                    },
+                    transformOrigin: {
+                      vertical: 'top',
+                      horizontal: 'left',
+                    },
+                    getContentAnchorEl: null,
+                  }}
+                  sx={{
+                    '& .MuiSelect-select': {
+                      width: '100%',
+                    }
+                  }}
+                >
+                  <MenuItem value="">Todas</MenuItem>
+                  <MenuItem value="new">Nuevo</MenuItem>
+                  <MenuItem value="like_new">Como nuevo</MenuItem>
+                  <MenuItem value="good">Buen estado</MenuItem>
+                  <MenuItem value="fair">Estado aceptable</MenuItem>
+                  <MenuItem value="poor">Deteriorado</MenuItem>
+                </Select>
+              </FormControl>
+            
+              <FormControl 
+                fullWidth 
+                size="small"
+                sx={{ 
+                  mb: 2,
+                  '& .MuiOutlinedInput-root': {
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#004f9e',
+                    },
+                  },
+                  '& .MuiInputLabel-root.Mui-focused': {
+                    color: '#004f9e',
+                  }
+                }}
+              >
+                <InputLabel>Ordenar por</InputLabel>
+                <Select
+                  value={tempFilters.ordering}
+                  label="Ordenar por"
+                  onChange={(e) => handleTempFilterChange('ordering', e.target.value)}
+                  MenuProps={{ 
+                    PaperProps: { 
+                      sx: { 
+                        maxHeight: 300,
+                        width: 'auto'
+                      } 
+                    },
+                    anchorOrigin: {
+                      vertical: 'bottom',
+                      horizontal: 'left',
+                    },
+                    transformOrigin: {
+                      vertical: 'top',
+                      horizontal: 'left',
+                    },
+                    getContentAnchorEl: null,
+                  }}
+                  sx={{
+                    '& .MuiSelect-select': {
+                      width: '100%',
+                    }
+                  }}
+                >
+                  <MenuItem value="-created_at">Más recientes</MenuItem>
+                  <MenuItem value="price">Precio: menor a mayor</MenuItem>
+                  <MenuItem value="-price">Precio: mayor a menor</MenuItem>
+                  <MenuItem value="-views_count">Más vistos</MenuItem>
+                </Select>
+              </FormControl>
+            
+              <Typography sx={{ fontWeight: 500, mb: 1 }}>Rango de precios</Typography>
+              <Box sx={{ px: 0.5 }}>
+                <ShadcnSlider
+                  value={tempPriceRange}
+                  onChange={handleTempPriceRangeChange}
+                  min={0}
+                  max={1000000}
+                  step={1000}
+                />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                  <Typography variant="body2">${tempPriceRange[0].toLocaleString()}</Typography>
+                  <Typography variant="body2">${tempPriceRange[1].toLocaleString()}</Typography>
+                </Box>
               </Box>
             </Grid>
-          )}
-        </Grid>
-      </Paper>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, py: 1.5 }}>
+          <MuiButton 
+            onClick={handleCloseFilterDialog}
+            sx={{ 
+              color: '#004f9e',
+              borderColor: '#004f9e',
+              '&:hover': {
+                borderColor: '#003b7a',
+                backgroundColor: 'rgba(0, 79, 158, 0.04)',
+              }
+            }}
+          >
+            Cancelar
+          </MuiButton>
+          <MuiButton 
+            onClick={applyFiltersAndClose} 
+            variant="contained" 
+            sx={{ 
+              bgcolor: '#004f9e',
+              '&:hover': {
+                bgcolor: '#003b7a',
+              }
+            }}
+          >
+            Aplicar filtros
+          </MuiButton>
+        </DialogActions>
+      </Dialog>
 
       {error ? (
         <Alert severity="error" sx={{ my: 2 }}>{error}</Alert>
@@ -348,10 +589,10 @@ const HomePage = () => {
             products={products} 
             onFavoriteClick={handleFavoriteClick}
             isLoading={loading}
-            itemsPerRow={6} // Configurar 5 productos por fila
-            uniformSize={true} // Garantizar tamaño uniforme
-            cardHeight={380} // Aumentado de 320 a 380
-            imageHeight={220} // Aumentado de 160 a 210
+            itemsPerRow={5}
+            uniformSize={true}
+            cardHeight={400}
+            imageHeight={220}
           />
           <Box sx={{ 
             mt: 2, 

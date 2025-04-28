@@ -16,7 +16,7 @@ type RegisterData = {
  */
 export const register = async (userData: RegisterData) => {
   try {
-    const response = await axios.post(`${API_URL}/api/accounts/register/`, userData);
+    const response = await axios.post(`${API_URL}/auth/register/`, userData);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -31,7 +31,7 @@ export const register = async (userData: RegisterData) => {
  */
 export const registerSimple = async (username: string, email: string, password: string) => {
   try {
-    const response = await axios.post(`${API_URL}/api/accounts/register/`, {
+    const response = await axios.post(`${API_URL}/auth/register/`, {
       username,
       email,
       password,
@@ -47,7 +47,7 @@ export const registerSimple = async (username: string, email: string, password: 
 export const login = async (email: string, password: string) => {
   try {
     // Actualizando la URL para usar auth en lugar de accounts
-    const response = await axios.post(`${API_URL}/api/login/`, { email, password });
+    const response = await axios.post(`${API_URL}/auth/login/`, { email, password });
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {

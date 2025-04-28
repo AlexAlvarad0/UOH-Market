@@ -10,6 +10,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
+        """Retorna solo las conversaciones del usuario autenticado."""
+        # Añadir conteo de mensajes no leídos para el usuario actual
         return Conversation.objects.filter(participants=self.request.user)
     
     def create(self, request, *args, **kwargs):
@@ -39,12 +41,25 @@ class ConversationViewSet(viewsets.ModelViewSet):
         except Product.DoesNotExist:
             return Response({'detail': 'Producto no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
     
+    def retrieve(self, request, *args, **kwargs):
+        """Al acceder a una conversación, asegurar que los mensajes se marquen como leídos."""
+        instance = self.get_object()
+        # Marcar los mensajes no leídos dirigidos al usuario actual como leídos
+        unread_messages = instance.messages.filter(is_read=False).exclude(sender=request.user)
+        for message in unread_messages:
+            message.is_read = True
+            message.save()
+        
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+    
     @action(detail=True, methods=['get'])
     def messages(self, request, pk=None):
+        """Obtiene los mensajes de una conversación y los marca como leídos."""
         conversation = self.get_object()
         messages = conversation.messages.all().order_by('created_at')
         
-        # Marcar mensajes como leídos
+        # Marcar mensajes como leídos cuando el usuario actual accede a ellos
         unread_messages = messages.filter(is_read=False).exclude(sender=request.user)
         for message in unread_messages:
             message.is_read = True
@@ -67,7 +82,8 @@ class MessageViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        conversation_id = request.data.get('conversation_id')
+        # Buscar 'conversation' en lugar de 'conversation_id'
+        conversation_id = request.data.get('conversation')
         try:
             conversation = Conversation.objects.get(id=conversation_id, participants=request.user)
             message = Message.objects.create(

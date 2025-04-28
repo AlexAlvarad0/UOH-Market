@@ -16,7 +16,7 @@ router.register(r'messages', MessageViewSet, basename='message')
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('accounts.urls')),  # Todas las rutas de autenticación
-    path('api/', include(router.urls)),
+    path('api/', include(router.urls)),          # <-- CORREGIDO AQUÍ
 ]
 
 # Añadir URLs para archivos estáticos y media en modo de desarrollo

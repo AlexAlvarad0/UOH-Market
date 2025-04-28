@@ -6,13 +6,11 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { ConfigProvider } from 'antd';
 import Box from '@mui/material/Box';
-import Fab from '@mui/material/Fab';
-import AddIcon from '@mui/icons-material/Add';
+import styled from 'styled-components';
 
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
 import ConfirmEmailPage from './pages/ConfirmEmailPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import ProfilePage from './pages/ProfilePage';
@@ -47,7 +45,62 @@ const antTheme = {
   },
 };
 
-// Componente interno para acceder a los hooks de navegación
+const StyledWrapper = styled.div`
+  .plusButton {
+    /* Config start */
+    --plus_sideLength: 2.5rem;
+    --plus_topRightTriangleSideLength: 0.9rem;
+    /* Config end */
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid white;
+    width: var(--plus_sideLength);
+    height: var(--plus_sideLength);
+    background-color: #000000;
+    overflow: hidden;
+  }
+
+  .plusButton::before {
+    position: absolute;
+    content: "";
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-width: 0 var(--plus_topRightTriangleSideLength) var(--plus_topRightTriangleSideLength) 0;
+    border-style: solid;
+    border-color: #cdcdcd;
+    transition-timing-function: ease-in-out;
+    transition-duration: 0.2s;
+  }
+
+  .plusButton:hover {
+    cursor: pointer;
+  }
+
+  .plusButton:hover::before,
+  .plusButton:focus-visible::before {
+    --plus_topRightTriangleSideLength: calc(var(--plus_sideLength) * 2);
+  }
+
+  .plusButton>.plusIcon {
+    fill: white;
+    width: calc(var(--plus_sideLength) * 0.7);
+    height: calc(var(--plus_sideLength) * 0.7);
+    z-index: 1;
+    transition-timing-function: ease-in-out;
+    transition-duration: 0.2s;
+  }
+
+  .plusButton:hover>.plusIcon,
+  .plusButton:focus-visible>.plusIcon {
+    fill: black;
+    transform: rotate(180deg);
+  }
+`;
+
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,9 +111,6 @@ function AppContent() {
       navigate('/login', { state: { from: location.pathname } });
       return;
     }
-
-    // Ya no verificamos si el usuario es vendedor
-    // Todos los usuarios pueden publicar productos
     navigate('/product/new');
   };
 
@@ -69,7 +119,8 @@ function AppContent() {
       width: '100%', 
       minHeight: '100vh',
       bgcolor: 'background.default',
-      position: 'relative'
+      position: 'relative',
+      paddingTop: '64px', /* Ajuste para la altura del header */
     }}>
       <ThemeProvider theme={theme}>
         <ConfigProvider theme={antTheme}>
@@ -82,7 +133,6 @@ function AppContent() {
                 </ErrorBoundary>
               } />
               <Route path="login" element={<LoginPage />} />
-              <Route path="register" element={<RegisterPage />} />
               <Route path="verify-email" element={<VerifyEmailPage />} />
               <Route path="confirm-email/:uid/:token" element={<ConfirmEmailPage />} />
               <Route 
@@ -107,19 +157,26 @@ function AppContent() {
             </Route>
           </Routes>
 
-          {/* Floating Action Button for adding new products */}
-          <Fab 
-            color="primary" 
-            aria-label="add" 
-            onClick={handleAddProduct}
-            sx={{ 
-              position: 'fixed', 
-              bottom: 16, 
-              right: 16 
+          <StyledWrapper
+            style={{
+              position: 'fixed',
+              bottom: 16,
+              right: 16,
             }}
           >
-            <AddIcon />
-          </Fab>
+            <div 
+              tabIndex={0} 
+              className="plusButton" 
+              onClick={handleAddProduct}
+              title="Publicar nuevo producto"
+            >
+              <svg className="plusIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 30">
+                <g>
+                  <path d="M13.75 23.75V16.25H6.25V13.75H13.75V6.25H16.25V13.75H23.75V16.25H16.25V23.75H13.75Z" />
+                </g>
+              </svg>
+            </div>
+          </StyledWrapper>
         </ConfigProvider>
       </ThemeProvider>
     </Box>

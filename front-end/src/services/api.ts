@@ -524,6 +524,66 @@ class ApiService {
       return { success: false, error: error.response?.data || 'Error al actualizar el perfil' };
     }
   }
+
+  // Conversaciones
+  async getConversations() {
+    try {
+      const response = await axios.get(`${API_URL}/conversations/`, {
+        headers: this.getHeaders()
+      });
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return { success: false, error: error.response?.data || 'Error al cargar conversaciones' };
+    }
+  }
+
+  async createConversation(productId: number, sellerId: number) {
+    try {
+      const response = await axios.post(
+        `${API_URL}/conversations/`,
+        { product_id: productId, seller_id: sellerId },
+        { headers: this.getHeaders() }
+      );
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return { success: false, error: error.response?.data || 'Error al crear conversación' };
+    }
+  }
+
+  async getMessages(conversationId: number) {
+    try {
+      console.log(`Obteniendo mensajes para conversación ${conversationId}`);
+      // Usar la URL de 'messages' endpoint en la conversación específica
+      const response = await axios.get(`${API_URL}/conversations/${conversationId}/messages/`, {
+        headers: this.getHeaders()
+      });
+      
+      // Al obtener los mensajes, el backend los marca como leídos automáticamente
+      // gracias a la acción definida en ConversationViewSet
+      console.log(`Recibidos ${response.data?.length || 0} mensajes`);
+      
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      console.error('Error al cargar mensajes:', error);
+      return { 
+        success: false, 
+        error: error.response?.data || 'Error al cargar mensajes' 
+      };
+    }
+  }
+
+  async sendMessage(conversationId: number, content: string) {
+    try {
+      const response = await axios.post(
+        `${API_URL}/messages/`,
+        { conversation: conversationId, content }, // <-- CAMBIO AQUÍ
+        { headers: this.getHeaders() }
+      );
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return { success: false, error: error.response?.data || 'Error al enviar mensaje' };
+    }
+  }
 }
 
 // Instancia principal para uso general
@@ -531,8 +591,62 @@ const apiService = new ApiService();
 
 // Servicios específicos agrupados por funcionalidad
 export const auth = {
-  login: (email: string, password: string) => apiService.login(email, password),
-  // Puedes agregar más métodos relacionados con autenticación aquí
+  async login(email: string, password: string) {
+    try {
+      const response = await axios.post(`${API_URL}/auth/login/`, {
+        email,
+        password
+      });
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error en login:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        return {
+          success: false,
+          error: error.response.data
+        };
+      }
+      return {
+        success: false,
+        error: 'Error al conectar con el servidor'
+      };
+    }
+  },
+
+  async register(username: string, email: string, password: string, firstName: string, lastName: string) {
+    try {
+      // Usar la ruta correcta según el backend de Django
+      const response = await axios.post(`${API_URL}/auth/register/`, {
+        username,
+        email,
+        password,
+        password2: password, // Añadir campo password2 que exige el backend
+        first_name: firstName,
+        last_name: lastName
+      });
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error registrando usuario:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        return {
+          success: false,
+          error: error.response.data
+        };
+      }
+      return {
+        success: false,
+        error: 'Error al conectar con el servidor'
+      };
+    }
+  },
 };
 
 export default apiService;
