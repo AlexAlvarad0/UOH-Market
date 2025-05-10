@@ -10,12 +10,14 @@ import MenuItem from '@mui/material/MenuItem';
 import Menu from '@mui/material/Menu';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 import MoreIcon from '@mui/icons-material/MoreVert';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import ChatIcon from '@mui/icons-material/Chat';
 import CategoryMenu from './buttons/CategoryMenu';
 import SearchInput from './common/SearchInput';
+import NotificationsMenu from './NotificationsMenu';
 import logoImage from '../assets/logo.png';
 import '../styles/fonts.css';
 import '../styles/search.css';
@@ -195,6 +197,21 @@ const Header = () => {
           </IconButton>
           <p>Favoritos</p>
         </MenuItem>,
+        <MenuItem key="notifications" onClick={() => {
+          handleMobileMenuClose();
+          // Simular un clic en el icono de notificaciones
+          const notificationButton = document.querySelector('[aria-label="notificaciones"]');
+          if (notificationButton) {
+            (notificationButton as HTMLElement).click();
+          }
+        }}>
+          <IconButton size="large" color="inherit">
+            <Badge color="error">
+              <NotificationsIcon />
+            </Badge>
+          </IconButton>
+          <p>Notificaciones</p>
+        </MenuItem>,
         <MenuItem key="chat" onClick={() => navigate('/chat')}>
           <IconButton size="large" color="inherit">
             <Badge color="error">
@@ -364,6 +381,28 @@ const Header = () => {
         }}>
           {isAuthenticated ? (
             <>
+              <IconButton
+                size="large"
+                color="inherit"
+                onClick={() => navigate('/favorites')}
+                aria-label="favoritos"
+              >
+                <FavoriteIcon />
+              </IconButton>
+              
+              <NotificationsMenu />
+              
+              <IconButton
+                size="large"
+                edge="end"
+                aria-label="perfil de usuario"
+                aria-controls={menuId}
+                aria-haspopup="true"
+                onClick={handleProfileMenuOpen}
+                color="inherit"
+              >
+                <AccountCircle />
+              </IconButton>
             </>
           ) : (
             <Button 
@@ -372,7 +411,7 @@ const Header = () => {
               size="small"
               sx={{
                 fontSize: { md: '1rem' },
-                padding: { md: '1px 1px' }
+                padding: { md: '6px 12px' }
               }}
             >
               Iniciar Sesión
@@ -392,9 +431,9 @@ const Header = () => {
           <IconButton
             size="small"
             aria-label="show more"
-            aria-controls={menuId}
+            aria-controls={mobileMenuId}
             aria-haspopup="true"
-            onClick={handleProfileMenuOpen}
+            onClick={handleMobileMenuOpen}
             color="inherit"
             sx={{ padding: '6px' }}
           >

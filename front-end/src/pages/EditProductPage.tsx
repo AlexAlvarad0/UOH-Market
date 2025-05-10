@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Container, Typography, Box, TextField, MenuItem, Button, 
   Grid, Paper, CircularProgress, Alert, FormControl,
-  InputLabel, Select, FormHelperText
+  InputLabel, Select, FormHelperText, Chip
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -23,6 +23,7 @@ const EditProductPage: React.FC = () => {
   const [price, setPrice] = useState('');
   const [categoryId, setCategoryId] = useState<number | string>('');
   const [condition, setCondition] = useState('');
+  const [product, setProduct] = useState<any>(null);
   
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +68,7 @@ const EditProductPage: React.FC = () => {
         const productResponse = await api.getProductById(numericId);
         if (productResponse.success && productResponse.data) {
           const product = productResponse.data;
+          setProduct(product);
           
           setTitle(product.title);
           setDescription(product.description);
@@ -180,6 +182,25 @@ const EditProductPage: React.FC = () => {
           </Alert>
         )}
         
+        {/* Mostrar el estado actual del producto */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Estado actual del producto:
+          </Typography>
+          {product && (
+            <Chip 
+              label={
+                product.status === 'pending' ? 'En revisión' : 
+                product.status === 'available' ? 'Disponible' : 'No disponible'
+              }
+              color={
+                product.status === 'pending' ? 'warning' : 
+                product.status === 'available' ? 'success' : 'error'
+              }
+            />
+          )}
+        </Box>
+
         <Box component="form" onSubmit={handleSubmit} noValidate>
           <Grid container spacing={3}>
             <Grid item xs={12}>

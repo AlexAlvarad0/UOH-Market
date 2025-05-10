@@ -10,6 +10,12 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ['id', 'name', 'description']
 
+class ProductBasicSerializer(serializers.ModelSerializer):
+    """Serializador simplificado para productos, usado en notificaciones"""
+    class Meta:
+        model = Product
+        fields = ['id', 'title', 'price']
+
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
@@ -26,9 +32,13 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'description', 'price', 'category', 'category_name',
             'seller', 'seller_username', 'condition', 'created_at', 'updated_at',
-            'is_available', 'views_count', 'images', 'is_favorite'
+            'is_available', 'views_count', 'images', 'is_favorite', 'status',
+            'review_scheduled_at', 'manually_unavailable'
         ]
-        read_only_fields = ['seller', 'views_count', 'created_at', 'updated_at']
+        read_only_fields = [
+            'seller', 'views_count', 'created_at', 'updated_at', 
+            'review_scheduled_at', 'manually_unavailable'
+        ]
     
     def get_is_favorite(self, obj):
         request = self.context.get('request')

@@ -1,7 +1,15 @@
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.utils import timezone
+import datetime
 import os
+import logging
+from .utils import moderate_content
+
+logger = logging.getLogger(__name__)
 
 class Category(models.Model):
     name = models.CharField(max_length=100)
@@ -27,10 +35,24 @@ class Product(models.Model):
         ('fair', 'Estado aceptable'),
         ('poor', 'Mal estado'),
     ])
+    STATUS_CHOICES = [
+        ('pending', 'En revisión'),
+        ('available', 'Disponible'),
+        ('unavailable', 'No disponible'),
+    ]
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_available = models.BooleanField(default=True)
     views_count = models.IntegerField(default=0)
+    # Campo para controlar cuando un producto debe ser revisado
+    review_scheduled_at = models.DateTimeField(null=True, blank=True)
+    # Campo para registrar si el producto fue modificado por el usuario manualmente
+    manually_unavailable = models.BooleanField(default=False)
     
     def __str__(self):
         return self.title
@@ -66,3 +88,26 @@ class Favorite(models.Model):
         
     def __str__(self):
         return f"{self.user.username} favorited {self.product.title}"
+
+@receiver(post_save, sender=Product)
+def product_post_save(sender, instance, created, **kwargs):
+    """
+    Signal para programar la moderación automática cuando se crea un producto.
+    El producto se mantiene en estado 'pending' durante al menos 2 minutos antes de ser revisado.
+    """
+    if created and instance.status == 'pending':
+        logger.info(f"Producto #{instance.id} creado: {instance.title}")
+        
+        # Programar la revisión para 2 minutos después de la creación
+        review_time = timezone.now() + datetime.timedelta(minutes=2)
+        
+        # Actualizar el tiempo de revisión programado
+        # Usar update() para evitar que se active de nuevo este signal
+        Product.objects.filter(pk=instance.pk).update(review_scheduled_at=review_time)
+        
+        logger.info(f"Revisión programada para {review_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+    # No ejecutamos la moderación inmediatamente - será realizada por el middleware
+
+# Asegurarse de que este código se carga al inicio
+default_app_config = 'products.apps.ProductsConfig'

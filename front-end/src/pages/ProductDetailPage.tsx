@@ -17,6 +17,7 @@ import api from '../services/api';
 import EditButton from '../components/buttons/EditButton';
 import DeleteButton from '../components/buttons/DeleteButton';
 import EditProductModal from '../components/EditProductModal';
+import BreadcrumbNav from '../components/BreadcrumbNav';
 import {
   Carousel,
   CarouselContent,
@@ -24,6 +25,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
+import { formatPrice } from '../utils/formatPrice';
 
 // Estilos para los botones de carrusel
 const arrowButtonStyle = {
@@ -72,7 +74,19 @@ interface ProductType {
   views_count: number;
   location?: string;
   category_name?: string; // Para compatibilidad
+  status: string; // Nuevo campo para el estado del producto
 }
+
+const getStatusChip = (status: string) => {
+  const statusMap: Record<string, { label: string; color: string }> = {
+    pending: { label: 'En revisión', color: 'warning' },
+    available: { label: 'Disponible', color: 'success' },
+    unavailable: { label: 'No disponible', color: 'error' },
+  };
+
+  const statusInfo = statusMap[status] || { label: 'Desconocido', color: 'default' };
+  return <Chip label={statusInfo.label} color={statusInfo.color} />;
+};
 
 const ProductDetailPage = () => {
   const { productId } = useParams<{ productId: string }>();
@@ -276,7 +290,7 @@ const ProductDetailPage = () => {
   // Renderizamos diferentes estados de la UI
   if (loading) {
     return (
-      <Container maxWidth="md" sx={{ mt: 4, textAlign: 'center' }}>
+      <Container maxWidth="xl" sx={{ mt: 4, textAlign: 'center', py: { xs: 2, sm: 3 }, px: { xs: 1, sm: 2, md: 3 } }}>
         <CircularProgress size={60} thickness={4} />
         <Typography variant="h6" mt={2}>Cargando detalles del producto...</Typography>
       </Container>
@@ -285,7 +299,7 @@ const ProductDetailPage = () => {
 
   if (error) {
     return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Container maxWidth="xl" sx={{ mt: 4, py: { xs: 2, sm: 3 }, px: { xs: 1, sm: 2, md: 3 } }}>
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
@@ -298,7 +312,7 @@ const ProductDetailPage = () => {
 
   if (!product) {
     return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Container maxWidth="xl" sx={{ mt: 4, py: { xs: 2, sm: 3 }, px: { xs: 1, sm: 2, md: 3 } }}>
         <Alert severity="warning">
           No se encontró información del producto.
         </Alert>
@@ -310,7 +324,13 @@ const ProductDetailPage = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
+    <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3 }, px: { xs: 1, sm: 2, md: 3 }, mt: { xs: 2, sm: 3 }, mb: 8 }}>
+      <BreadcrumbNav 
+        items={[
+          { name: 'Productos', href: '/', current: false },
+          { name: product?.title || 'Detalle del producto', href: '#', current: true }
+        ]} 
+      />
       <Snackbar 
         open={!!notification} 
         autoHideDuration={6000} 
@@ -473,17 +493,22 @@ const ProductDetailPage = () => {
               </Typography>
               
               <Typography variant="h4" color="primary" gutterBottom>
-                ${typeof product.price === 'number' 
-                  ? product.price.toFixed(2) 
-                  : parseFloat(product.price).toFixed(2)}
+                {formatPrice(product.price)}
               </Typography>
               
-              {/* Ubicación y Fecha */}
+              {/* Fecha relativa */}
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <LocationOnIcon sx={{ fontSize: 18, color: 'text.secondary', mr: 0.5 }} />
                 <Typography variant="body2" color="text.secondary">
-                  {product.location || 'Sin ubicación especificada'} · {getRelativeTime(product.created_at)}
+                  {getRelativeTime(product.created_at)}
                 </Typography>
+              </Box>
+
+              {/* Estado del producto */}
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Typography variant="subtitle1" sx={{ mr: 1 }}>
+                  Estado:
+                </Typography>
+                {product && getStatusChip(product.status)}
               </Box>
               
               {/* Estadísticas */}
@@ -524,8 +549,8 @@ const ProductDetailPage = () => {
                 {product.description}
               </Typography>
               
-              {/* Botones de acción móviles (solo se muestran en pantallas pequeñas) */}
-              <Box sx={{ mt: 3, display: { xs: 'flex', md: 'none' }, gap: 2, flexDirection: 'column' }}>
+              {/* Botones de acción móviles (solo en pantallas pequeñas) */}
+              <Box sx={{ mt: 3, display: { xs: 'flex', md: 'none' }, gap: 2, flexDirection: 'row' }}>
                 {isAuthenticated ? (
                   !isOwner ? (
                     <>
@@ -558,25 +583,10 @@ const ProductDetailPage = () => {
                       </Button>
                     </>
                   ) : (
-                    <>
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Este es tu producto. Los usuarios interesados podrán contactarte.
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 2 }}>
-                        <EditButton 
-                          onClick={() => setEditModalOpen(true)}
-                          buttonText="Editar"
-                          fullWidth
-                        />
-                        <DeleteButton 
-                          onClick={() => setDeleteDialogOpen(true)}
-                          buttonText="Eliminar"
-                          fullWidth
-                        />
-                      </Box>
-                    </>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <EditButton onClick={() => setEditModalOpen(true)} />
+                      <DeleteButton onClick={() => setDeleteDialogOpen(true)} />
+                    </Box>
                   )
                 ) : (
                   <Button 
@@ -665,23 +675,10 @@ const ProductDetailPage = () => {
                     </Button>
                   </>
                 ) : (
-                  <>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>
-                      Este es tu producto. Los usuarios interesados podrán contactarte.
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <EditButton 
-                        onClick={() => setEditModalOpen(true)}
-                        buttonText="Editar"
-                        fullWidth
-                      />
-                      <DeleteButton 
-                        onClick={() => setDeleteDialogOpen(true)}
-                        buttonText="Eliminar"
-                        fullWidth
-                      />
-                    </Box>
-                  </>
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <EditButton onClick={() => setEditModalOpen(true)} />
+                    <DeleteButton onClick={() => setDeleteDialogOpen(true)} />
+                  </Box>
                 )
               ) : (
                 <Button 

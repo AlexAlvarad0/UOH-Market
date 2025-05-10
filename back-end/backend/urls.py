@@ -17,6 +17,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('accounts.urls')),  # Todas las rutas de autenticación
     path('api/', include(router.urls)),          # <-- CORREGIDO AQUÍ
+    path('api/notifications/', include('notifications.urls')),  # Rutas de notificaciones
 ]
 
 # Añadir URLs para archivos estáticos y media en modo de desarrollo

@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.core.exceptions import ValidationError
+from django.db import models
 from .models import Category, Product, Favorite
 from .serializers import CategorySerializer, ProductSerializer, ProductDetailSerializer, FavoriteSerializer
 import logging
@@ -85,49 +86,55 @@ class ProductViewSet(viewsets.ModelViewSet):
             # Logs de depuración
             logger.info(f"Recibidos datos del producto: {request.data}")
             logger.info(f"Archivos recibidos: {request.FILES}")
-            
+
             serializer = self.get_serializer(data=request.data)
             if not serializer.is_valid():
                 logger.error(f"Errores de validación: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-                
-            # Guardar el producto
-            product = serializer.save()
-            
+
+            # Guardar el producto con estado inicial "En revisión"
+            product = serializer.save(status='pending')
+
             # Procesar múltiples imágenes
             from .models import ProductImage
             image_keys = [key for key in request.FILES.keys() if key.startswith('images[')]
-            
+
             if image_keys:
-                # Determinar cuál es la imagen primaria
                 primary_image_index = request.data.get('primary_image_index', '0')
                 try:
                     primary_index = int(primary_image_index)
                 except (ValueError, TypeError):
                     primary_index = 0
-                    
+
                 for key in image_keys:
                     image_file = request.FILES[key]
                     try:
-                        # Extraer el índice del key (formato: images[0], images[1], etc.)
                         index = int(key.split('[')[1].split(']')[0])
                         is_primary = (index == primary_index)
-                        
-                        # Guardar la imagen
+
                         image = ProductImage.objects.create(
                             product=product,
                             image=image_file,
                             is_primary=is_primary
                         )
                         image.save()
-                        
+
                         logger.info(f"Imagen {index} guardada: {image.image.url} (primaria: {is_primary})")
                     except Exception as img_err:
                         logger.error(f"Error al guardar imagen {key}: {str(img_err)}")
             else:
                 logger.warning(f"No se proporcionaron imágenes para el producto {product.id}")
-            
-            # Obtener el producto completo actualizado
+
+            # Verificar si el producto pasó la moderación (atributo agregado por el signal)
+            if hasattr(product, '_moderation_passed') and not product._moderation_passed:
+                # El producto no pasó la moderación y ya ha sido eliminado
+                rejection_reason = getattr(product, '_rejection_reason', 'El contenido es inapropiado para nuestro Marketplace')
+                return Response(
+                    {"error": "No podemos publicar tu producto. " + rejection_reason},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Si llegamos aquí, el producto fue aprobado o el signal no se procesó
             from .serializers import ProductDetailSerializer
             updated_serializer = ProductDetailSerializer(product)
             headers = self.get_success_headers(serializer.data)
@@ -139,6 +146,27 @@ class ProductViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.filter_queryset(self.get_queryset())
+            
+            # Filtrar productos según el estado y el rol del usuario
+            if request.user.is_authenticated:
+                if request.user.is_staff:
+                    # Los administradores pueden ver todos los productos
+                    pass
+                else:
+                    # Usuarios normales autenticados:
+                    # 1. Ver sus propios productos independientemente del estado
+                    # 2. Ver productos marcados como disponible o no disponible (pero no en revisión) de otros usuarios
+                    queryset = queryset.filter(
+                        models.Q(seller=request.user) |  # Sus propios productos
+                        (
+                            ~models.Q(seller=request.user) &  # Productos de otros usuarios
+                            ~models.Q(status='pending')        # Que no estén en revisión
+                        )
+                    )
+            else:
+                # Usuarios no autenticados solo ven productos disponibles o no disponibles (manualmente)
+                queryset = queryset.exclude(status='pending')
+                
             page = self.paginate_queryset(queryset)
             if page is not None:
                 serializer = self.get_serializer(page, many=True)
@@ -146,6 +174,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
         except Exception as e:
+            logger.exception(f"Error listing products: {str(e)}")
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -262,6 +291,57 @@ class ProductViewSet(viewsets.ModelViewSet):
             logger.exception(f"Error updating product: {str(e)}")
             return Response(
                 {"detail": f"Error al actualizar el producto: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=True, methods=['post'])
+    def toggle_availability(self, request, pk=None):
+        """
+        Permite al propietario de un producto marcar/desmarcar manualmente como "No disponible"
+        cuando ya no tiene stock o vuelve a tenerlo.
+        """
+        try:
+            product = self.get_object()
+            
+            # Verificar si el usuario es el propietario
+            if product.seller != request.user:
+                return Response(
+                    {"detail": "No tienes permiso para cambiar la disponibilidad de este producto."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Si el producto está en revisión, no permitir cambiar la disponibilidad
+            if product.status == 'pending':
+                return Response(
+                    {"detail": "No puedes cambiar la disponibilidad de un producto que está en revisión."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+            # Cambiar la disponibilidad del producto
+            if product.status == 'available':
+                # Si está disponible, marcarlo como no disponible
+                product.status = 'unavailable'
+                product.manually_unavailable = True
+                message = "Producto marcado como No disponible."
+            else:
+                # Si está no disponible, marcarlo como disponible
+                product.status = 'available'
+                product.manually_unavailable = False
+                message = "Producto marcado como Disponible."
+                
+            product.save(update_fields=['status', 'manually_unavailable'])
+            
+            # Devolver el producto actualizado
+            serializer = self.get_serializer(product)
+            return Response({
+                "message": message,
+                "product": serializer.data
+            })
+            
+        except Exception as e:
+            logger.exception(f"Error cambiando disponibilidad del producto: {str(e)}")
+            return Response(
+                {"detail": f"Error al cambiar la disponibilidad: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

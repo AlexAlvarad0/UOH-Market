@@ -3,11 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes
-from django.core.mail import send_mail
-from django.conf import settings
+from django.db import IntegrityError
 from .serializers import RegisterSerializer, ProfileSerializer, LoginSerializer
 from .models import Profile
 import logging
@@ -26,16 +22,19 @@ class RegisterView(generics.CreateAPIView):
         try:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            logger.debug(f"Validated data: {serializer.validated_data}")
             user = serializer.save()
-            
-            # Set user as active immediately
             user.is_active = True
             user.save()
-            
-            return Response({
-                "message": "User registered successfully."
-            }, status=status.HTTP_201_CREATED)
+            return Response({"message": "Usuario registrado exitosamente."}, status=status.HTTP_201_CREATED)
+        except IntegrityError as e:
+            logger.error(f"IntegrityError: {str(e)}")
+            return Response(
+                {"username": ["Este nombre de usuario ya está en uso."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except serializers.ValidationError as e:
+            logger.error(f"ValidationError: {str(e)}")
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(f"Registration error: {str(e)}")
             raise
@@ -158,12 +157,3 @@ class LoginView(generics.GenericAPIView):
                 'username': user.username or user.email,
             }
         })
-
-class VerifyEmailView(APIView):
-    permission_classes = (AllowAny,)
-    
-    def get(self, request, uidb64, token):
-        """Placeholder view that always returns success"""
-        return Response({
-            "message": "Account verified successfully."
-        }, status=status.HTTP_200_OK)

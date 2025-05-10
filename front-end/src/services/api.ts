@@ -647,6 +647,16 @@ export const auth = {
       };
     }
   },
+
+  async verifyEmail(email: string, code: string) {
+    try {
+      const response = await axios.post(`${API_URL}/auth/verify-email/`, { email, code });
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      console.error('Error verificando email:', error.response?.data || error.message);
+      return { success: false, error: error.response?.data || 'Error al verificar correo' };
+    }
+  }
 };
 
 export default apiService;

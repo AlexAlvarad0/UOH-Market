@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Card, CardContent, Typography, Box } from '@mui/material';
+import { Card, Typography, Box } from '@mui/material';
 import { Product } from '../types/products';
 import { Link } from 'react-router-dom';
 import '../styles/ProductCard.css';
-import placeholderImage from '../assets/placeholder-image.png';
+import { formatPrice } from '../utils/formatPrice';
 
 interface ProductCardProps {
   product: Product;
@@ -70,42 +70,48 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onFavoriteClick }) =
 
   return (
     <Card className="product-card" sx={cardStyle}>
-      <div style={imageContainerStyle}>
-        {imageUrl ? (
-          <img 
-            src={imageUrl} 
-            alt={product.title} 
-            style={imageStyle}
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <Box sx={{ 
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#ffffff',
-            color: '#999'
-          }}>
-            <Typography variant="body2">Sin imagen</Typography>
-          </Box>
-        )}
-        <div className="favorite-button" onClick={handleFavoriteChange}>
-          <label className="ui-bookmark">
-            <input type="checkbox" checked={isFavorite} onChange={() => {}} />
-            <div className="bookmark">
-              <svg viewBox="0 0 16 16" style={{marginTop: 4}} className="bi bi-heart-fill" height={25} width={25}>
-                <path d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314" fillRule="evenodd" />
-              </svg>
-            </div>
-          </label>
+      <Link to={`/products/${product.id}`} style={{
+        display: 'block',
+        textDecoration: 'none',
+        color: 'inherit',
+        width: '100%'
+      }}>
+        <div style={imageContainerStyle}>
+          {imageUrl ? (
+            <img 
+              src={imageUrl} 
+              alt={product.title} 
+              style={imageStyle}
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <Box sx={{ 
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#ffffff',
+              color: '#999'
+            }}>
+              <Typography variant="body2">Sin imagen</Typography>
+            </Box>
+          )}
+          <div className="favorite-button" onClick={handleFavoriteChange}>
+            <label className="ui-bookmark">
+              <input type="checkbox" checked={isFavorite} onChange={() => {}} />
+              <div className="bookmark">
+                <svg viewBox="0 0 16 16" style={{marginTop: 4}} className="bi bi-heart-fill" height={25} width={25}>
+                  <path d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314" fillRule="evenodd" />
+                </svg>
+              </div>
+            </label>
+          </div>
         </div>
-      </div>
-      
+      </Link>
       <Link to={`/products/${product.id}`} style={{ 
         textDecoration: 'none', 
         color: 'inherit', 
@@ -161,7 +167,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onFavoriteClick }) =
               fontSize: '1.2rem'
             }}
           >
-            ${Number(product.price).toFixed(2)}
+            {formatPrice(product.price)}
           </Typography>
         </div>
       </Link>

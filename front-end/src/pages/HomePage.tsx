@@ -10,10 +10,12 @@ import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { useAuth } from '../hooks/useAuth';
 import ProductList from '../components/ProductList';
 import OffersCarousel from '../components/OffersCarousel';
+import BreadcrumbNav from '../components/BreadcrumbNav';
 import api from '../services/api';
 // Para implementar Slider de shadcn/ui
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import { styled } from '@mui/material/styles';
+import { formatPrice } from '../utils/formatPrice';
 
 // Slider de shadcn/ui adaptado para Material UI
 const SliderRoot = styled(SliderPrimitive.Root)(({ theme }) => ({
@@ -286,9 +288,12 @@ const HomePage = () => {
       sx={{ 
         py: { xs: 2, sm: 3 },
         px: { xs: 1, sm: 2, md: 3 },
-        mt: { xs: 2, sm: 4 }, // margen superior responsivo en lugar de fijo 215px
+        mt: { xs: 2, sm: 3 }, // margen superior igual que en las otras páginas
       }}
     >
+      {/* Breadcrumb - Solo mostramos "Inicio" en la página principal */}
+      <BreadcrumbNav items={[]} />
+
       <Box sx={{ 
         width: '100%',
         mt: 0,
@@ -536,13 +541,14 @@ const HomePage = () => {
                 <ShadcnSlider
                   value={tempPriceRange}
                   onChange={handleTempPriceRangeChange}
+                  onValueCommit={handleTempPriceRangeChange}
                   min={0}
                   max={1000000}
                   step={1000}
                 />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                  <Typography variant="body2">${tempPriceRange[0].toLocaleString()}</Typography>
-                  <Typography variant="body2">${tempPriceRange[1].toLocaleString()}</Typography>
+                  <Typography variant="body2">{formatPrice(tempPriceRange[0])}</Typography>
+                  <Typography variant="body2">{formatPrice(tempPriceRange[1])}</Typography>
                 </Box>
               </Box>
             </Grid>

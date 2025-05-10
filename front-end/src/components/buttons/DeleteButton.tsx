@@ -3,86 +3,58 @@ import styled from 'styled-components';
 
 interface DeleteButtonProps {
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
-  buttonText?: string;
 }
 
-const DeleteButton: React.FC<DeleteButtonProps> = ({ 
-  onClick, 
-  buttonText = "Delete"  // Texto predeterminado
-}) => {
-  return (
-    <StyledWrapper buttonText={buttonText}>
-      <button className="delete-button" onClick={onClick} type="button">
-        <svg className="delete-svgIcon" viewBox="0 0 448 512">
-          <path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z" />
-        </svg>
-      </button>
-    </StyledWrapper>
-  );
-}
+const DeleteButton: React.FC<DeleteButtonProps> = ({ onClick }) => (
+  <StyledWrapper>
+    <button className="bin-button" onClick={onClick} type="button">
+      <svg className="bin-top" viewBox="0 0 39 7" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <line y1={5} x2={39} y2={5} stroke="white" strokeWidth={4} />
+        <line x1={12} y1="1.5" x2="26.0357" y2="1.5" stroke="white" strokeWidth={3} />
+      </svg>
+      <svg className="bin-bottom" viewBox="0 0 33 39" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <mask id="path-1-inside-1_8_19" fill="white">
+          <path d="M0 0H33V35C33 37.2091 31.2091 39 29 39H4C1.79086 39 0 37.2091 0 35V0Z" />
+        </mask>
+        <path d="M0 0H33H0ZM37 35C37 39.4183 33.4183 43 29 43H4C-0.418278 43 -4 39.4183 -4 35H4H29H37ZM4 43C-0.418278 43 -4 39.4183 -4 35V0H4V35V43ZM37 0V35C37 39.4183 33.4183 43 29 43V35V0H37Z" fill="white" mask="url(#path-1-inside-1_8_19)" />
+        <path d="M12 6L12 29" stroke="white" strokeWidth={4} />
+        <path d="M21 6V29" stroke="white" strokeWidth={4} />
+      </svg>
+    </button>
+  </StyledWrapper>
+);
 
-const StyledWrapper = styled.div<{ buttonText: string }>`
-  .delete-button {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: rgb(20, 20, 20);
-    border: none;
-    font-weight: 600;
+const StyledWrapper = styled.div`
+  .bin-button {
+    width: 55px;
+    height: 55px;
+    border-radius: 15px;
+    background-color: rgb(255, 95, 95);
+    border: 3px solid rgb(255, 201, 201);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.164);
     cursor: pointer;
-    transition-duration: 0.3s;
-    overflow: hidden;
+    transition: background-color 0.3s, transform 0.1s;
     position: relative;
-    padding: 0;
   }
-
-  .delete-svgIcon {
+  .bin-top {
+    width: 17px;
+    transition: transform 0.3s;
+    transform-origin: right;
+  }
+  .bin-bottom {
     width: 15px;
-    transition-duration: 0.3s;
   }
-
-  .delete-svgIcon path {
-    fill: white;
+  .bin-button:hover .bin-top {
+    transform: rotate(45deg);
   }
-
-  .delete-button:hover {
-    width: 90px;
-    border-radius: 50px;
-    transition-duration: 0.3s;
-    background-color: rgb(255, 69, 69);
-    align-items: center;
+  .bin-button:hover {
+    background-color: rgb(255, 0, 0);
   }
-
-  .delete-button:hover .delete-svgIcon {
-    width: 20px;
-    transition-duration: 0.3s;
-    transform: translateY(60%);
-    -webkit-transform: rotate(360deg);
-    -moz-transform: rotate(360deg);
-    -o-transform: rotate(360deg);
-    -ms-transform: rotate(360deg);
-    transform: rotate(360deg);
-  }
-
-  .delete-button::before {
-    display: none;
-    content: "${props => props.buttonText}";
-    color: white;
-    transition-duration: 0.3s;
-    font-size: 2px;
-  }
-
-  .delete-button:hover::before {
-    display: block;
-    padding-right: 10px;
-    font-size: 13px;
-    opacity: 1;
-    transform: translateY(0px);
-    transition-duration: 0.3s;
+  .bin-button:active {
+    transform: scale(0.9);
   }
 `;
 

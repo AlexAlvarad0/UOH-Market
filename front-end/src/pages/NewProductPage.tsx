@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Container, Typography, Paper, Box, Alert, Grid, 
   Card, CardContent, Divider, TextField, MenuItem, 
-  IconButton, Button, CircularProgress
+  IconButton, Button, CircularProgress, Chip,
+  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
@@ -11,6 +12,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import api from '../services/api';
 import { processImages } from '../utils/imageUtils';
 import { useAuth } from '../hooks/useAuth';
+import BreadcrumbNav from '../components/BreadcrumbNav';
 
 const NewProductPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +20,10 @@ const NewProductPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetchingCategories, setFetchingCategories] = useState(true);
+  
+  // Estado para el diálogo de error
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   
   // Estado del formulario
   const [title, setTitle] = useState('');
@@ -27,6 +33,7 @@ const NewProductPage: React.FC = () => {
   const [condition, setCondition] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [status, setStatus] = useState('pending'); // Añadir un estado inicial para el producto
   
   // Estado para almacenar categorías y condiciones desde el backend
   const [categories, setCategories] = useState<Array<{id: string, name: string}>>([]);
@@ -94,6 +101,7 @@ const NewProductPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setErrorDialogOpen(false);
 
     try {
       // Validaciones básicas
@@ -111,11 +119,7 @@ const NewProductPage: React.FC = () => {
       formData.append('title', title);
       formData.append('description', description);
       formData.append('price', price);
-      
-      // Asegurarse de que estamos enviando el campo category correctamente
-      // Si category es un ID, lo enviamos directamente, sino buscamos el ID correspondiente
       formData.append('category', category);
-      
       formData.append('condition', condition);
       
       // Procesar las imágenes para hacerlas cuadradas
@@ -131,16 +135,6 @@ const NewProductPage: React.FC = () => {
 
       console.log("Enviando datos del producto con imágenes procesadas");
       
-      // Log para verificar que las imágenes estén en el FormData
-      console.log("Contenido del FormData:");
-      for (let [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`${key}: archivo - ${value.name} (${value.size} bytes)`);
-        } else {
-          console.log(`${key}: ${value}`);
-        }
-      }
-
       const response = await api.createProduct(formData);
 
       if (response.success && response.data) {
@@ -152,7 +146,17 @@ const NewProductPage: React.FC = () => {
             ? response.error
             : JSON.stringify(response.error);
         }
-        setError(errorMessage);
+        
+        // Verificar si el error está relacionado con contenido inapropiado
+        if (errorMessage.includes("No podemos publicar tu producto") || 
+            errorMessage.includes("contenido inapropiado") ||
+            errorMessage.includes("inapropiado")) {
+          setErrorMessage(errorMessage);
+          setErrorDialogOpen(true);
+        } else {
+          // Para otros errores, mostrar en el formulario
+          setError(errorMessage);
+        }
       }
     } catch (error: any) {
       console.error('Error creating product:', error);
@@ -182,7 +186,13 @@ const NewProductPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="xl" sx={{ mt: { xs: 2, sm: 3 }, mb: 4, py: { xs: 2, sm: 3 }, px: { xs: 1, sm: 2, md: 3 } }}>
+      <BreadcrumbNav 
+        items={[
+          { name: 'Vender producto', href: '/product/new', current: true }
+        ]} 
+      />
+      
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
         <IconButton onClick={() => navigate(-1)} sx={{ mr: 1 }}>
           <ArrowBackIcon />
@@ -511,6 +521,13 @@ const NewProductPage: React.FC = () => {
                 
                 <Divider sx={{ my: 2 }} />
                 
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Estado inicial del producto:
+                  </Typography>
+                  <Chip label="En revisión" color="warning" />
+                </Box>
+                
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   <Box
                     sx={{
@@ -535,6 +552,26 @@ const NewProductPage: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* Diálogo de error */}
+      <Dialog
+        open={errorDialogOpen}
+        onClose={() => setErrorDialogOpen(false)}
+        aria-labelledby="error-dialog-title"
+        aria-describedby="error-dialog-description"
+      >
+        <DialogTitle id="error-dialog-title">Error</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="error-dialog-description">
+            {errorMessage}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setErrorDialogOpen(false)} autoFocus>
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

@@ -10,6 +10,7 @@ export interface Product {
   title: string;
   description: string;
   price: string;
+  is_favorite?: boolean;
   category: number;
   category_name?: string;
   condition: string;

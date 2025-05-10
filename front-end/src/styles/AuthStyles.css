@@ -420,6 +420,47 @@ footer a {
   border-right: 10px solid #f8f9fa;
 }
 
+/* Panel flotante para requisitos de contraseña */
+.password-reqs-floating {
+  position: absolute;
+  top: 110%;
+  left: 0;
+  width: 260px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 12px 16px;
+  z-index: 20;
+  font-size: 13px;
+  color: #222;
+  transition: all 0.2s;
+}
+
+.req-unmet {
+  color: #e74c3c;
+  display: flex;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.req-met {
+  color: #27ae60;
+  display: flex;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+@media (max-width: 600px) {
+  .password-reqs-floating {
+    width: 98vw;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    padding: 10px 6px;
+  }
+}
+
 /* Media query para pantallas pequeñas */
 @media (max-width: 768px) {
   .container {
@@ -576,5 +617,24 @@ footer a {
   .password-requirements {
     font-size: 11px;
     padding: 8px;
+  }
+
+  /* Ocultar mensajes de error en rojo en registro para pantallas pequeñas */
+  .sign-up-container .error-text {
+    display: none;
+  }
+  /* Ajustar posición del icono de mostrar/ocultar contraseña */
+  .password-toggle {
+    right: 10px; /* más cerca del borde */
+  }
+  /* Asegurar espacio suficiente para el icono en inputs de contraseña */
+  .sign-up-container input[type="password"],
+  .sign-up-container input[type="text"] {
+    padding-right: 36px; /* espacio para el icono */
+  }
+  /* Reducir tamaño de fuente de las etiquetas sobre inputs */
+  .sign-up-container label {
+    font-size: 12px;
+    margin-bottom: 4px;
   }
 }

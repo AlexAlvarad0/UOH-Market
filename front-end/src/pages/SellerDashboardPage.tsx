@@ -12,6 +12,7 @@ import api from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import EditButton from '../components/buttons/EditButton';
 import DeleteButton from '../components/buttons/DeleteButton';
+import { formatPrice } from '../utils/formatPrice';
 
 const SellerDashboardPage = () => {
   const { user } = useAuth();
@@ -156,7 +157,7 @@ const SellerDashboardPage = () => {
       headerName: 'Precio',
       width: 120,
       renderCell: (params: GridRenderCellParams) => (
-        <Typography>${parseFloat(params.value).toLocaleString()}</Typography>
+        <Typography>{formatPrice(params.value)}</Typography>
       )
     },
     {

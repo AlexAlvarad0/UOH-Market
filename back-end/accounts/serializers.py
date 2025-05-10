@@ -5,7 +5,21 @@ from .models import Profile
 
 User = get_user_model()
 
+# Serializer básico para usar en relaciones
+class UserSerializerBasic(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email']
+        read_only_fields = ['email']
+
 class RegisterSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(
+        required=True,
+        error_messages={
+            "unique": "Este nombre de usuario ya está en uso.",
+            "blank": "El nombre de usuario es obligatorio.",
+        }
+    )
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True, required=True)
     email = serializers.EmailField(required=True)
@@ -20,13 +34,13 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({"password": "Password fields didn't match."})
+            raise serializers.ValidationError({"password": "Las contraseñas no coinciden."})
         
         email = attrs['email'].lower()
         
         if User.objects.filter(email__iexact=email).exists():
             raise serializers.ValidationError({
-                "email": "This email is already in use."
+                "email": "Este correo eléctrónico ya está en uso."
             })
         
         attrs['email'] = email
